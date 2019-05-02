@@ -9,12 +9,16 @@ export default class Analyzer {
         this.dataWS;
         this.orderWSFilepath;
         this.dataWSFilepath;
+        this.showDataCard = false;
+        this.showOrdersCard = false;
+        this.dataCardPath = '';
+        this.ordersCardPath = '';
     }
     loadOrderWS () {
         csv. 
         fromPath('C:/dev/data/static data.csv', {delimiter: "|"})
         .on("data", function(data){
-            if(data[9] == 'NCR') console.log(data);
+            if(data[9] ==  'NCR') console.log(data);
         })
         .on("end", function(){
             console.log("done");

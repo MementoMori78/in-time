@@ -7,6 +7,7 @@ import {
 } from 'vue-cli-plugin-electron-builder/lib'
 
 import Analyzer from './Analyzer'
+import { ECONNRESET } from 'constants';
 
 const isDevelopment = process.env.NODE_ENV !== 'production'
 
@@ -68,9 +69,6 @@ app.on('ready', async () => {
       console.error('Vue Devtools failed to install:', e.toString())
     }
   }
-  let menu = Menu.buildFromTemplate(menuTemplate);
-  let an = new Analyzer(); 
-  an.loadOrderWS();
   //Menu.setApplicationMenu(null);
   createWindow()
 })
@@ -90,7 +88,7 @@ if (isDevelopment) {
   }
 }
 
-
+let an = new Analyzer()
 
 
 let menuTemplate = [
@@ -102,6 +100,32 @@ let menuTemplate = [
   }
 ];
 
-ipcMain.on('uploadOrders', (event, data) => {
-  console.log(123123123);  
+
+ipcMain.on('home:mounted', (event, data) => {
+    event.sender.send( 'home:mounted', {
+      showDataCard: true,
+      //showDataCard: an.showDataCard,
+      showOrdersCard: false,
+      //showOrdersCard: an.showOrdersCard,
+      dataCardName: 'Статичні дані',
+      ordersCardName: 'Дані заявок',
+      dataCardPath: 'c:/path/to/data.csv',
+      //dataCardPath: an.ordersCardPath,
+      ordersCardPath: 'c:/path/to/orders.csv'
+      //ordersCardPath: an.dataCardPath
+    } )
 })
+
+ipcMain.on('upload', (event, data) => {
+  
+})
+
+ipcMain.on('', (event, data) => {
+  
+})
+
+
+ipcMain.on('', (event, data) => {
+  
+})
+

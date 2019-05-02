@@ -5,6 +5,7 @@
         <div class="card white">
           <div class="card-content black-text">
             <span class="card-title">Для початку роботи необхідно:</span>
+            <br>
             <ul class="collection">
               <li class="collection-item">
                 <div>
@@ -16,7 +17,7 @@
               </li>
               <li class="collection-item">
                 <div>
-                  Завантажити таблицю з статичними даними АТМ
+                  Завантажити таблицю зі статичними даними АТМ
                   <a href="#!" class="secondary-content">
                     <i class="material-icons black-text">arrow_upward</i>
                   </a>
@@ -27,12 +28,12 @@
         </div>
       </div>
     </div>
-    <div class="row">
-      <div class="col s12 m6">
-          <FileCaption :name="captionName"> </FileCaption>
+    <div class="row ">
+      <div class="col s5 offset-s1">
+          <FileCaption v-if="showOrdersCard" :name="ordersCardName" :filename="ordersCardPath" >  </FileCaption>
       </div>
-      <div class="col s12 m6">
-          <FileCaption :name="captionName"> </FileCaption>
+      <div class="col s5 ">
+          <FileCaption v-if="showDataCard" :name="dataCardName" :filename="dataCardPath"> </FileCaption>
       </div>
     </div>
   </div>
@@ -54,14 +55,29 @@ export default {
   },
   data(){
     return {
-      captionName: 'Hello'
+      showDataCard: Boolean,
+      showOrdersCard: Boolean,
+      dataCardName: String,
+      ordersCardName: String,
+      dataCardPath: String,
+      ordersCardPath: String
     }
   },
   methods: {
     uploadOrders: function(){
-      alert('Hello');
-      ipcRenderer.send('uploadOrders', 'hello')
+      ipcRenderer.send('orders:upload')
     }
+  },
+  mounted(){
+    ipcRenderer.send('home:mounted');
+    ipcRenderer.on('home:mounted', (event, data) => {
+        this.showDataCard = data.showDataCard;
+        this.showOrdersCard = data.showOrdersCard;
+        this.dataCardName = data.dataCardName;
+        this.ordersCardName = data.ordersCardName;
+        this.dataCardPath = data.dataCardPath;
+        this.ordersCardPath = data.ordersCardPath;
+    })
   }
 };
 </script>

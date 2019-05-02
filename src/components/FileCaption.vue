@@ -2,6 +2,8 @@
     <div class="card white">
               <div class="card-content balck-text">
                   <span class="card-title">{{name}}</span>
+                  <p>Шлях до файлу: </p>
+                  <p>{{filename}}</p>
               </div>
           </div>
 </template>
