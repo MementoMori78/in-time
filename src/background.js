@@ -1,6 +1,6 @@
 'use strict'
 
-import { app, protocol, BrowserWindow, Menu } from 'electron'
+import { app, protocol, BrowserWindow, Menu, ipcMain } from 'electron'
 import {
   createProtocol,
   installVueDevtools
@@ -91,6 +91,8 @@ if (isDevelopment) {
 }
 
 
+
+
 let menuTemplate = [
   {
     label: 'File',
@@ -99,3 +101,7 @@ let menuTemplate = [
     ]
   }
 ];
+
+ipcMain.on('uploadOrders', (event, data) => {
+  console.log(123123123);  
+})

@@ -9,7 +9,7 @@
               <li class="collection-item">
                 <div>
                   Завантажити таблицю з даними заявок Printec
-                  <a href="#!" class="secondary-content">
+                  <a href="#!" class="secondary-content" v-on:click="uploadOrders">
                     <i class="material-icons black-text">arrow_upward</i>
                   </a>
                 </div>
@@ -46,7 +46,7 @@
 // @ is an alias to /src
 import HelloWorld from "@/components/HelloWorld.vue";
 import FileCaption from "@/components/FileCaption.vue";
-
+const { remote, ipcRenderer } = require("electron");
 export default {
   name: "home",
   components: {
@@ -55,6 +55,12 @@ export default {
   data(){
     return {
       captionName: 'Hello'
+    }
+  },
+  methods: {
+    uploadOrders: function(){
+      alert('Hello');
+      ipcRenderer.send('uploadOrders', 'hello')
     }
   }
 };
