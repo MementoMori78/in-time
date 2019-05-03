@@ -1,6 +1,6 @@
 'use strict'
 
-import { app, protocol, BrowserWindow, Menu, ipcMain } from 'electron'
+import { app, protocol, BrowserWindow, Menu, ipcMain, dialog } from 'electron'
 import {
   createProtocol,
   installVueDevtools
@@ -102,22 +102,31 @@ let menuTemplate = [
 
 
 ipcMain.on('home:mounted', (event, data) => {
-    event.sender.send( 'home:mounted', {
-      showDataCard: true,
-      //showDataCard: an.showDataCard,
-      showOrdersCard: false,
-      //showOrdersCard: an.showOrdersCard,
-      dataCardName: 'Статичні дані',
-      ordersCardName: 'Дані заявок',
-      dataCardPath: 'c:/path/to/data.csv',
-      //dataCardPath: an.ordersCardPath,
-      ordersCardPath: 'c:/path/to/orders.csv'
-      //ordersCardPath: an.dataCardPath
-    } )
+    event.sender.send( 'home:mounted', an.getStateForHome())
 })
 
-ipcMain.on('upload', (event, data) => {
-  
+ipcMain.on('orders:upload', (event, data) => {
+  let options = {
+      filters: [{ 
+        name: 'Файл з даними заявок Printec, згенерований Управлінням', 
+        extensions: ['csv']
+      }] 
+    };
+    let filepath = dialog.showOpenDialog(options);
+    an.loadOrdersWS(filepath);
+    event.sender.send('orders:upload', an.getStateForHome());
+})
+
+ipcMain.on('data:upload', (event, data) => {
+  let options = {
+      filters: [{ 
+        name: 'Файл зі статичними даними, згенерований Управлінням', 
+        extensions: ['csv']
+      }] 
+    };
+    let filepath = dialog.showOpenDialog(options);
+    an.loadDataWS(filepath);
+    event.sender.send('data:upload', an.getStateForHome());
 })
 
 ipcMain.on('', (event, data) => {

@@ -18,7 +18,7 @@
               <li class="collection-item">
                 <div>
                   Завантажити таблицю зі статичними даними АТМ
-                  <a href="#!" class="secondary-content">
+                  <a href="#!" class="secondary-content" v-on:click="uploadData">
                     <i class="material-icons black-text">arrow_upward</i>
                   </a>
                 </div>
@@ -28,13 +28,17 @@
         </div>
       </div>
     </div>
-    <div class="row ">
-      <div class="col s5 offset-s1">
-          <FileCaption v-if="showOrdersCard" :name="ordersCardName" :filename="ordersCardPath" >  </FileCaption>
-      </div>
-      <div class="col s5 ">
-          <FileCaption v-if="showDataCard" :name="dataCardName" :filename="dataCardPath"> </FileCaption>
-      </div>
+    <div class="row" >
+      <template v-if="showOrdersCard">
+        <div class="col s5 offset-s1">
+            <FileCaption  :name="ordersCardName" :filename="ordersCardPath" >  </FileCaption>
+        </div>
+      </template>
+      <template v-if="showDataCard">
+        <div class="col s5" >
+            <FileCaption  :name="dataCardName" :filename="dataCardPath"> </FileCaption>
+        </div>
+      </template>
     </div>
   </div>
 </template>
@@ -64,8 +68,29 @@ export default {
     }
   },
   methods: {
-    uploadOrders: function(){
-      ipcRenderer.send('orders:upload')
+    uploadOrders: () => {
+      //request to backgroung.js
+      ipcRenderer.send('orders:upload');
+      //answer on same channel
+      ipcRenderer.on('orders:upload', (event, state) => {
+        this.showDataCard = state.showDataCard;
+        this.showOrdersCard = state.showOrdersCard;
+        this.dataCardName = state.dataCardName;
+        this.ordersCardName = state.ordersCardName;
+        this.dataCardPath = state.dataCardPath;
+        this.ordersCardPath = state.ordersCardPath;
+      })
+    },
+    uploadData: () => {
+      ipcRenderer.send('data:upload');
+      ipcRenderer.on('data:upload', (event, state) => {
+        this.showDataCard = state.showDataCard;
+        this.showOrdersCard = state.showOrdersCard;
+        this.dataCardName = state.dataCardName;
+        this.ordersCardName = state.ordersCardName;
+        this.dataCardPath = state.dataCardPath;
+        this.ordersCardPath = state.ordersCardPath;
+      })  
     }
   },
   mounted(){
