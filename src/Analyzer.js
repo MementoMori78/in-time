@@ -4,7 +4,7 @@ import fs from 'fs'
 import { delimiter } from 'path';
 
 export default class Analyzer {
-    constructor(){
+    constructor() {
         this.orderWS;
         this.dataWS;
         this.ordersWSFilepath = '';
@@ -22,33 +22,34 @@ export default class Analyzer {
             ordersCardPath: this.ordersWSFilepath
         }
     }
-    loadOrdersWS (filepath) {
-        if(!filepath) return;
+    loadOrdersWS(filepath) {
+        if (!filepath) return;
         filepath = filepath[0];
         this.ordersWSFilepath = filepath;
         this.showOrdersCard = true;
-        csv. 
-            fromPath(filepath, {delimiter: "|"})
-                .on("data", function(data){
-                    console.log(data);
-                })
-                .on("end", function(){
-                    console.log("done");
-                });
+        const fileStream = fs.createReadStream(filepath, { encoding: 'utf-8' });
+        const parser = csv.parse({ delimiter: "|" });
+
+        fileStream
+            .pipe(parser)
+            .on('error', error => console.error(error))
+            .on('data', row => console.log(row))
+            .on('end', (rowCount) => console.log(`done, parsed ${rowCount} rows`));
     }
-    
-    loadDataWS (filepath) {
-        if(!filepath) return;
+
+    loadDataWS(filepath) {
+        if (!filepath) return;
         filepath = filepath[0];
         this.dataWSFilepath = filepath;
         this.showDataCard = true;
-        csv. 
-            fromPath(filepath, {delimiter: "|"})
-                .on("data", function(data){
-                    if(data[9] ==  'NCR') console.log(data);
-                })
-                .on("end", function(){
-                    console.log("done");
-                });
+        let rowsCount = 0;
+        csv.
+            fromPath(filepath, { delimiter: "|" })
+            .on("data", function (data) {
+                if (data[9] == 'NCR') rowsCount++;
+            })
+            .on("end", function () {
+                console.log(`done. found ${rowsCount} NCR's`);
+            });
     }
 }
