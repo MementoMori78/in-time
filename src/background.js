@@ -46,13 +46,13 @@ app.on('window-all-closed', () => {
   // to stay active until the user quits explicitly with Cmd + Q
   if (process.platform !== 'darwin') {
     app.quit()
-  }
+  } 
 })
 
 app.on('activate', () => {
   // On macOS it's common to re-create a window in the app when the
   // dock icon is clicked and there are no other windows open.
-  if (win === null) { 
+  if (win === null) {
     createWindow()
   }
 })
@@ -69,7 +69,7 @@ app.on('ready', async () => {
       console.error('Vue Devtools failed to install:', e.toString())
     }
   }
-  //Menu.setApplicationMenu(null);
+  //Menu.setApplicationMenu(null); // delete functional menu on the top 
   createWindow()
 })
 
@@ -89,15 +89,15 @@ if (isDevelopment) {
 }
 
 let an = new Analyzer()
- 
+
 
 let menuTemplate = [
   {
     label: 'File',
-    submenu: [ 
+    submenu: [
 
     ]
-  } 
+  }
 ];
 
 
@@ -111,26 +111,26 @@ ipcMain.on('orders:upload', (event, data) => {
         name: 'Файл з даними заявок Printec, згенерований Управлінням', 
         extensions: ['csv']
       }] 
-    };  
+    };
     let filepath = dialog.showOpenDialog(options);
-    an.loadOrdersWS(filepath);
-    event.sender.send('orders:upload', an.getStateForHome());
+    an.loadOrdersWS(filepath, win);
+    //event.sender.send('orders:upload', an.getStateForHome());
 })
 
 ipcMain.on('data:upload', (event, data) => {
-  let options = { 
+  let options = {
       filters: [{ 
         name: 'Файл зі статичними даними, згенерований Управлінням', 
-        extensions: ['csv']  
+        extensions: ['csv']
       }] 
     };
     let filepath = dialog.showOpenDialog(options);
-    an.loadDataWS(filepath);
-    event.sender.send('data:upload', an.getStateForHome());
+    an.loadDataWS(filepath, win);
 })
 
-ipcMain.on('', (event, data) => {
-  
+ipcMain.on('state:reload', (event, data) => {
+  console.log('reload state')
+  event.sender.send('state:reload', an.getStateForHome())
 })
 
 
