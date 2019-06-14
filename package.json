@@ -14,6 +14,7 @@
   "main": "background.js",
   "dependencies": {
     "fast-csv": "^2.5.0",
+    "moment": "^2.24.0",
     "node-xlsx": "^0.14.1",
     "vue": "^2.6.10",
     "vue-router": "^3.0.3",

@@ -113,7 +113,7 @@ ipcMain.on('orders:upload', (event, data) => {
       }] 
     };
     let filepath = dialog.showOpenDialog(options);
-    an.loadOrdersWS(filepath, win);
+    an.loadOrdersData(filepath, win);
     //event.sender.send('orders:upload', an.getStateForHome());
 })
 
@@ -125,7 +125,7 @@ ipcMain.on('data:upload', (event, data) => {
       }] 
     };
     let filepath = dialog.showOpenDialog(options);
-    an.loadDataWS(filepath, win);
+    an.loadStaticData(filepath, win);
 })
 
 ipcMain.on('state:reload', (event, data) => {

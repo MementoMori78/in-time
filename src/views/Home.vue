@@ -8,7 +8,7 @@
             <br>
             <ul class="collection">
               <li class="collection-item" v-if="!showOrdersCard">
-                Завантажити таблицю з даними заявок Printec
+                1. Завантажити таблицю з даними заявок Printec
                 <a
                   href="#"
                   class="secondary-content"
@@ -19,7 +19,7 @@
               </li>
               <li class="collection-item" v-if="!showDataCard">
                 <div>
-                  Завантажити таблицю зі статичними даними АТМ
+                  2. Завантажити таблицю зі статичними даними АТМ
                   <a
                     href="#"
                     class="secondary-content"
@@ -36,24 +36,74 @@
     </div>
     <div class="row">
       <div class="col s6">
-        <div class="card white" v-if="showOrdersCard">
-          <div class="card-content balck-text">
+        <div class="card" v-if="showOrdersCard">
+          <div class="card-content black-text">
             <span class="card-title">{{ ordersCardName}}</span>
             <ul class="collection">
-              <li class="collection-item">Шлях до файлу : {{ ordersCardPath }}</li>
-              <li class="collection-item">Кількість заявок: {{ allOrdersCount }}</li>
-              <li class="collection-item">Закритих заявок : {{ closedOrdersCount }}</li>
+              <li class="collection-item">
+                Шлях до файлу:
+                <br>
+                <span class="blue-text">{{ ordersCardPath }}</span>
+              </li>
+              <li class="collection-item">
+                Кількість заявок:
+                <span class="blue-text">{{ allOrdersCount }}</span>
+              </li>
+              <li class="collection-item">
+                Закритих заявок :
+                <span class="blue-text">{{ closedOrdersCount }}</span>
+              </li>
+              <li class="collection-item">
+                Перше створення заявки - Останнє закриття заявки
+                <br>
+                <span class="blue-text">{{ordersStartTime }} - {{ ordersEndTime }}</span>
+              </li>
+              <li class="collection-item">
+                Кількість унікальних АТМ зі списку закритих заявок:
+                <span
+                  class="blue-text"
+                >{{ uniqueATMFromOrders }}</span>
+              </li>
             </ul>
+          </div>
+          <div class="card-action">
+            <a href="#" class="blue-text" v-on:click="uploadOrders">інший файл</a>
           </div>
         </div>
       </div>
       <div class="col s6">
         <div class="card white" v-if="showDataCard">
-          <div class="card-content balck-text">
-            <span class="card-title">{{ dataCardName}}</span>
+          <div class="card-content black-text">
+            <span class="card-title">{{dataCardName}}</span>
             <ul class="collection">
-              <li class="collection-item">Шлях до файлу   : {{ dataCardPath }}</li>
+              <li class="collection-item">
+                Шлях до файлу:
+                <br>
+                <span class="blue-text">{{ dataCardPath }}</span>
+              </li>
+              <li class="collection-item">
+                Кількість АТМ:
+                <span class="blue-text">{{ 806 }}</span>
+              </li>
+              <li class="collection-item">
+                Виробник NCR:
+                <span class="blue-text">{{ 250 }}</span>
+              </li>
+              <li class="collection-item">
+                Наявність статичних даних для АТМ зі списку закритих заявок:
+                <span class="blue-text">
+                  <br>
+                  {{ "118/119" }}
+                </span>
+              </li>
+              <li class="collection-item">
+                Виробник NCR:
+                <span class="blue-text">{{ 250 }}</span>
+              </li>
             </ul>
+          </div>
+          <div class="card-action">
+            <a href="#" class="blue-text" v-on:click="uploadData">інший файл</a>
           </div>
         </div>
       </div>
@@ -79,7 +129,12 @@ export default {
       dataCardPath: "",
       ordersCardPath: "",
       allOrdersCount: 0,
-      closedOrdersCount: 0
+      closedOrdersCount: 0,
+      ordersOk: true,
+      dataOk: true,
+      uniqueATMFromOrders: 0,
+      ordersStartTime: "",
+      ordersEndTime: ""
     };
   },
   methods: {
@@ -101,6 +156,9 @@ export default {
       this.ordersCardPath = state.ordersCardPath;
       this.allOrdersCount = state.allOrdersCount;
       this.closedOrdersCount = state.closedOrdersCount;
+      this.uniqueATMFromOrders = state.uniqueATMFromOrders;
+      this.ordersStartTime = state.ordersStartTime;
+      this.ordersEndTime = state.ordersEndTime;
     }
   },
   beforeCreate() {

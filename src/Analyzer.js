@@ -3,18 +3,25 @@ import csv from 'fast-csv'
 import fs from 'fs'
 import { delimiter } from 'path';
 import ipcMain from 'electron';
+import moment from 'moment';
+
 export default class Analyzer {
     constructor() {
         this.orderWS;
-        this.dataWS;
-        this.ordersWSFilepath = '';
-        this.dataWSFilepath = '';
+        this.staticDataAll;
+        this.staticData;
+        this.ordersFilepath = '';
+        this.dataFilepath = '';
         this.showDataCard = false;
         this.showOrdersCard = false;
         this.allOrdersData = [];
         this.allOrdersCount;
         this.closedOrders = [];
         this.closedOrdersCount;
+        this.uniqueATMFromOrders;
+        this.arrUniqueATM = [];
+        this.ordersStartTime = moment();
+        this.ordersEndTime = moment('1995-12-25');
     }
     getStateForHome() {
         return {
@@ -22,16 +29,19 @@ export default class Analyzer {
             showOrdersCard: this.showOrdersCard,
             dataCardName: 'Статичні дані',
             ordersCardName: 'Дані заявок',
-            dataCardPath: this.dataWSFilepath,
-            ordersCardPath: this.ordersWSFilepath,
+            dataCardPath: this.dataFilepath,
+            ordersCardPath: this.ordersFilepath,
             allOrdersCount: this.allOrdersCount,
-            closedOrdersCount: this.closedOrdersCount
+            closedOrdersCount: this.closedOrdersCount,
+            uniqueATMFromOrders: this.uniqueATMFromOrders,
+            ordersStartTime: `${this.ordersStartTime.format('DD.MM.YYYY HH:mm:ss')}`,
+            ordersEndTime: `${this.ordersEndTime.format('DD.MM.YYYY HH:mm:ss')}`
         }
     }
-    loadOrdersWS(filepath, win) {
+    loadOrdersData(filepath, win) {
         if (!filepath) return;
         filepath = filepath[0];
-        this.ordersWSFilepath = filepath;
+        this.ordersFilepath = filepath;
         this.showOrdersCard = true;
         /*
         const customHeaders = [
@@ -59,42 +69,55 @@ export default class Analyzer {
         });
         const parseOptions = {
             delimiter: "|",
-            rowDelimiter: "\n",
             headers: true,
-            //headers: customHeaders,
-            //renameHeaders: true,
             objectMode: true
         }
         const parser = csv.parse(parseOptions);
-        let rowCount = 0;
         this.allOrdersData = [];
+        let rowsCount = 0;
         fileStream
             .pipe(parser)
-            .on('error', error => console.error(error))
+            .on('error', error => console.error(rowsCount, error))
             .on('data', (orderObj) => {
+                console.log(orderObj);
                 this.allOrdersData.push(orderObj);
-                rowCount++
             })
             .on('end', (rows) => {
                 console.log(`done, parsed ${rows} rows`);
                 this.analyzeAllOrders();
-                win.send('orders:upload',  this.getStateForHome());
+                win.send('orders:upload', this.getStateForHome());
             });
 
     }
-    loadDataWS(filepath, win) {
+    loadStaticData(filepath, win) {
         if (!filepath) return;
         filepath = filepath[0];
-        this.dataWSFilepath = filepath;
+        this.dataFilepath = filepath;
         this.showDataCard = true;
+        const fileStream = fs.createReadStream(filepath, {
+            encoding: 'utf-8',
+        });
+        const parseOptions = {
+            delimiter: "|",
+            headers: true,
+            objectMode: true
+        }
+        const parser = csv.parse(parseOptions);
+        this.staticDataAll = [];
+        this.staticData = [];
         let rowsCount = 0;
-        csv.
-            fromPath(filepath, { delimiter: "|" })
-            .on("data", function (data) {
-                if (data[9] == 'NCR') rowsCount++;
+        fileStream
+            .pipe(parser)
+            .on('error', error => console.error(rowsCount, error))
+            .on('data', (dataObj) => {
+                this.staticDataAll.push(dataObj);
+                if (dataObj['виробник'] == "NCR") {
+                    this.staticData.push(dataObj);
+                    console.log(dataObj);
+                }
             })
-            .on("end", () => {
-                console.log(`done. found ${rowsCount} NCR's`);
+            .on('end', (rows) => {
+                console.log(`done, found ${this.staticData.length} NCRs`);
                 win.send('data:upload', this.getStateForHome());
             });
     }
@@ -108,6 +131,36 @@ export default class Analyzer {
                 this.closedOrders.push(order);
         })
         this.closedOrdersCount = this.closedOrders.length;
+        this.findUnique();
+        this.findStartEndTime();
         console.log(`Результат аналізу: Заявок всього: ${this.allOrdersCount} Закритих заявок: ${this.closedOrdersCount}`)
+    }
+
+    findUnique() {
+        this.arrUniqueATM = [];
+        for (let i = 0; i < this.closedOrders.length; i++) {
+            if (!this.arrUniqueATM.includes(this.closedOrders[i]['Id банкомата']))
+                this.arrUniqueATM.push(this.closedOrders[i]['Id банкомата']);
+        }
+        this.uniqueATMFromOrders = this.arrUniqueATM.length;
+    }
+
+    findStartEndTime() {
+        this.ordersStartTime = moment();
+        this.ordersEndTime = moment('1995-12-25');
+        const format = 'DD.MM.YYYY hh:mm:ss'
+        this.closedOrders.forEach((el) => {
+            el.creationTime = moment(el['Час створення'], format);
+            el.realTime = moment(el['Фактичний час'], format);
+
+            //console.log(`[${el['Час створення']}][${el['Фактичний час']}]`);
+
+            if (el.creationTime < this.ordersStartTime) {
+                this.ordersStartTime = el.creationTime;
+            }
+            if (el.realTime > this.ordersEndTime) {
+                this.ordersEndTime = el.realTime
+            }
+        });
     }
 }
