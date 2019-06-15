@@ -83,22 +83,19 @@
               </li>
               <li class="collection-item">
                 Кількість АТМ:
-                <span class="blue-text">{{ 806 }}</span>
+                <span class="blue-text">{{ staticDataAllATMCount }}</span>
               </li>
               <li class="collection-item">
                 Виробник NCR:
-                <span class="blue-text">{{ 250 }}</span>
+                <span class="blue-text">{{ staticDataATMCount }}</span>
               </li>
               <li class="collection-item">
                 Наявність статичних даних для АТМ зі списку закритих заявок:
                 <span class="blue-text">
                   <br>
-                  {{ "118/119" }}
+                  <b>{{ atmCoverage }} </b>
                 </span>
-              </li>
-              <li class="collection-item">
-                Виробник NCR:
-                <span class="blue-text">{{ 250 }}</span>
+                
               </li>
             </ul>
           </div>
@@ -134,7 +131,10 @@ export default {
       dataOk: true,
       uniqueATMFromOrders: 0,
       ordersStartTime: "",
-      ordersEndTime: ""
+      ordersEndTime: "",
+      staticDataATMcount: 0,
+      staticDataAllATMCount: 0, 
+      atmCoverage: "не достатньо даних"
     };
   },
   methods: {
@@ -159,6 +159,9 @@ export default {
       this.uniqueATMFromOrders = state.uniqueATMFromOrders;
       this.ordersStartTime = state.ordersStartTime;
       this.ordersEndTime = state.ordersEndTime;
+      this.staticDataATMCount = state.staticDataATMCount;
+      this.staticDataAllATMCount = state.staticDataAllATMCount;
+      this.atmCoverage = state.atmCoverage;
     }
   },
   beforeCreate() {

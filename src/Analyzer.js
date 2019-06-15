@@ -8,8 +8,8 @@ import moment from 'moment';
 export default class Analyzer {
     constructor() {
         this.orderWS;
-        this.staticDataAll;
-        this.staticData;
+        this.staticDataAll = [];
+        this.staticData = [];
         this.ordersFilepath = '';
         this.dataFilepath = '';
         this.showDataCard = false;
@@ -22,6 +22,7 @@ export default class Analyzer {
         this.arrUniqueATM = [];
         this.ordersStartTime = moment();
         this.ordersEndTime = moment('1995-12-25');
+        this.atmCoverage = 'Недостатньо даних';
     }
     getStateForHome() {
         return {
@@ -35,7 +36,10 @@ export default class Analyzer {
             closedOrdersCount: this.closedOrdersCount,
             uniqueATMFromOrders: this.uniqueATMFromOrders,
             ordersStartTime: `${this.ordersStartTime.format('DD.MM.YYYY HH:mm:ss')}`,
-            ordersEndTime: `${this.ordersEndTime.format('DD.MM.YYYY HH:mm:ss')}`
+            ordersEndTime: `${this.ordersEndTime.format('DD.MM.YYYY HH:mm:ss')}`,
+            staticDataATMCount: this.staticData.length,
+            staticDataAllATMCount: this.staticDataAll.length,
+            atmCoverage: this.atmCoverage
         }
     }
     loadOrdersData(filepath, win) {
@@ -74,20 +78,25 @@ export default class Analyzer {
         }
         const parser = csv.parse(parseOptions);
         this.allOrdersData = [];
+        this.closedOrdersCount = 0;
+        this.allOrdersCount = 0;
         let rowsCount = 0;
         fileStream
             .pipe(parser)
-            .on('error', error => console.error(rowsCount, error))
+            .on('error', error => {
+                this.ordersFilepath = 'Помилка при зчитуванні ' + this.ordersFilepath;
+                console.error(rowsCount, error);
+            })
             .on('data', (orderObj) => {
-                console.log(orderObj);
                 this.allOrdersData.push(orderObj);
             })
             .on('end', (rows) => {
-                console.log(`done, parsed ${rows} rows`);
+                console.log(`parsed ${rows} rows`);
                 this.analyzeAllOrders();
+                this.findATMCoverage();
                 win.send('orders:upload', this.getStateForHome());
             });
-
+        //orders
     }
     loadStaticData(filepath, win) {
         if (!filepath) return;
@@ -108,18 +117,23 @@ export default class Analyzer {
         let rowsCount = 0;
         fileStream
             .pipe(parser)
-            .on('error', error => console.error(rowsCount, error))
+            .on('error', error => {
+                console.error(rowsCount, error);
+                this.dataFilepath = 'Помилка при зчитуванні ' + this.dataFilepath;
+            })
             .on('data', (dataObj) => {
                 this.staticDataAll.push(dataObj);
                 if (dataObj['виробник'] == "NCR") {
                     this.staticData.push(dataObj);
-                    console.log(dataObj);
                 }
             })
             .on('end', (rows) => {
-                console.log(`done, found ${this.staticData.length} NCRs`);
+                console.log(`static parsed, all:${this.staticDataAll.length}, ncr:${this.staticData.length}`);
+                //checking if orders file has been parsed
+                this.findATMCoverage();
                 win.send('data:upload', this.getStateForHome());
             });
+        //static
     }
 
     analyzeAllOrders() {
@@ -133,14 +147,14 @@ export default class Analyzer {
         this.closedOrdersCount = this.closedOrders.length;
         this.findUnique();
         this.findStartEndTime();
-        console.log(`Результат аналізу: Заявок всього: ${this.allOrdersCount} Закритих заявок: ${this.closedOrdersCount}`)
+        console.log(`analyzed orders, overall: ${this.allOrdersCount} closed: ${this.closedOrdersCount}`)
     }
 
     findUnique() {
         this.arrUniqueATM = [];
         for (let i = 0; i < this.closedOrders.length; i++) {
-            if (!this.arrUniqueATM.includes(this.closedOrders[i]['Id банкомата']))
-                this.arrUniqueATM.push(this.closedOrders[i]['Id банкомата']);
+            if (!this.arrUniqueATM.some( e => e['Id банкомата'] == this.closedOrders[i]['Id банкомата']))
+                this.arrUniqueATM.push(this.closedOrders[i]);
         }
         this.uniqueATMFromOrders = this.arrUniqueATM.length;
     }
@@ -162,5 +176,28 @@ export default class Analyzer {
                 this.ordersEndTime = el.realTime
             }
         });
+    }
+
+    findATMCoverage() {
+        this.atmCoverage = 'Недостатньо даних';
+        if (!this.closedOrdersCount || !this.staticDataAll.length || !this.arrUniqueATM.length) {
+            return;
+        }
+        let found = 0;
+        let notFoundInStatic = []
+        this.arrUniqueATM.forEach((el) => {
+            if (this.staticDataAll.some(e => e['серійний номер'] == el['SN банкомата'])) {
+                found++;
+            } else {
+                notFoundInStatic.push(el);
+            }
+        })
+
+        this.atmCoverage = `${found}/${this.uniqueATMFromOrders}`;
+        console.log(this.atmCoverage);
+        console.log('Not found IDs:');
+        notFoundInStatic.forEach((el) => {
+            console.log(el['Id банкомата']);
+        })
     }
 }
