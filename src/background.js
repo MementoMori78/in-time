@@ -1,12 +1,13 @@
 'use strict'
 
-import { app, protocol, BrowserWindow, Menu, ipcMain } from 'electron'
+import { app, protocol, BrowserWindow, Menu, ipcMain, dialog } from 'electron'
 import {
   createProtocol,
   installVueDevtools
 } from 'vue-cli-plugin-electron-builder/lib'
 
 import Analyzer from './Analyzer'
+import { ECONNRESET } from 'constants';
 
 const isDevelopment = process.env.NODE_ENV !== 'production'
 
@@ -45,7 +46,7 @@ app.on('window-all-closed', () => {
   // to stay active until the user quits explicitly with Cmd + Q
   if (process.platform !== 'darwin') {
     app.quit()
-  }
+  } 
 })
 
 app.on('activate', () => {
@@ -68,10 +69,7 @@ app.on('ready', async () => {
       console.error('Vue Devtools failed to install:', e.toString())
     }
   }
-  let menu = Menu.buildFromTemplate(menuTemplate);
-  let an = new Analyzer(); 
-  an.loadOrderWS();
-  //Menu.setApplicationMenu(null);
+  //Menu.setApplicationMenu(null); // delete functional menu on the top 
   createWindow()
 })
 
@@ -90,7 +88,7 @@ if (isDevelopment) {
   }
 }
 
-
+let an = new Analyzer()
 
 
 let menuTemplate = [
@@ -102,6 +100,41 @@ let menuTemplate = [
   }
 ];
 
-ipcMain.on('uploadOrders', (event, data) => {
-  console.log(123123123);  
+
+ipcMain.on('home:mounted', (event, data) => {
+    event.sender.send( 'home:mounted', an.getStateForHome())
 })
+
+ipcMain.on('orders:upload', (event, data) => {
+  let options = {
+      filters: [{ 
+        name: 'Файл з даними заявок Printec, згенерований Управлінням', 
+        extensions: ['csv']
+      }] 
+    };
+    let filepath = dialog.showOpenDialog(options);
+    an.loadOrdersData(filepath, win);
+    //event.sender.send('orders:upload', an.getStateForHome());
+})
+
+ipcMain.on('data:upload', (event, data) => {
+  let options = {
+      filters: [{ 
+        name: 'Файл зі статичними даними, згенерований Управлінням', 
+        extensions: ['csv']
+      }] 
+    };
+    let filepath = dialog.showOpenDialog(options);
+    an.loadStaticData(filepath, win);
+})
+
+ipcMain.on('state:reload', (event, data) => {
+  console.log('reload state')
+  event.sender.send('state:reload', an.getStateForHome())
+})
+
+
+ipcMain.on('', (event, data) => {
+  
+})
+
