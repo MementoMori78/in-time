@@ -92,10 +92,14 @@
               <li class="collection-item">
                 Наявність статичних даних для АТМ зі списку закритих заявок:
                 <span class="blue-text">
-                  <br>
-                  <b>{{ atmCoverage }} </b>
+                  <b>{{ atmCoverage }}</b>
                 </span>
-                
+              </li>
+              <li class="collection-item">
+                ID банкоматів для яких відсутні статичні дані:
+                <span
+                  class="blue-text"
+                >{{ missingATMs }}</span>
               </li>
             </ul>
           </div>
@@ -105,16 +109,54 @@
         </div>
       </div>
     </div>
+    <div class="row" v-if="showOrdersCard && showDataCard">
+      <div class="col s12">
+        <div class="card white">
+          <div class="card-content">
+            
+            <span class="card-title">Виберіть вихідні дні</span>
+            <div class="row">
+            <vc-date-picker
+              :locale="{ id: 'uk'}"
+              :columns="parseInt(2)"
+              :min-date="this.minDate"
+              :max-date="this.maxDate"
+              mode="multiple"
+              :value="null"
+              is-double-paned
+              is-inline
+              is-expanded
+              @input="showDates"
+            ></vc-date-picker>
+            </div>
+            <div class="row">
+            <div class="col s12">
+              <p class="center-align">
+                <a class=" waves-effect waves-light blue btn" v-on:click="getStats">Отримати файл статистики</a>
+              </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
   </div>
 </template>
  
 <style>
+.vc-rounded-lg {
+  border-radius: 0;
+}
 </style>
 
 
 <script>
 // @ is an alias to /src
 const { remote, ipcRenderer } = require("electron");
+import Calendar from "v-calendar";
+import moment from "moment";
+import { start } from "repl";
 export default {
   name: "home",
   data() {
@@ -133,8 +175,12 @@ export default {
       ordersStartTime: "",
       ordersEndTime: "",
       staticDataATMcount: 0,
-      staticDataAllATMCount: 0, 
-      atmCoverage: "не достатньо даних"
+      staticDataAllATMCount: 0,
+      atmCoverage: "Недостатньо даних",
+      missingATMs: "",
+      minDate: moment().toDate(),
+      maxDate: moment().toDate(),
+      selectedDates: []
     };
   },
   methods: {
@@ -144,8 +190,8 @@ export default {
     uploadData: () => {
       ipcRenderer.send("data:upload");
     },
-    reloadState: () => {
-      ipcRenderer.send("state:reload");
+    getStats() {
+      ipcRenderer.send("stats:get", { dates: this.selectedDates });
     },
     updateState(state) {
       this.showDataCard = state.showDataCard;
@@ -162,6 +208,17 @@ export default {
       this.staticDataATMCount = state.staticDataATMCount;
       this.staticDataAllATMCount = state.staticDataAllATMCount;
       this.atmCoverage = state.atmCoverage;
+      this.missingATMs = state.missingATMs;
+      this.minDate = moment(
+        this.ordersStartTime,
+        "DD.MM.YYYY HH:mm:ss"
+      ).toDate();
+      this.maxDate = moment(this.ordersEndTime, "DD.MM.YYYY HH:mm:ss").toDate();
+      //this.calendarAttributes[0].dates.end = moment(this.ordersEndTime, 'DD.MM.YYYY HH:mm:ss').toDate();
+    },
+    showDates(obj) {
+      this.selectedDates = obj;
+      console.log(this.selectedDates.length);
     }
   },
   beforeCreate() {

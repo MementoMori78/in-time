@@ -23,6 +23,7 @@ export default class Analyzer {
         this.ordersStartTime = moment();
         this.ordersEndTime = moment('1995-12-25');
         this.atmCoverage = 'Недостатньо даних';
+        this.missingATMs = '';
     }
     getStateForHome() {
         return {
@@ -39,7 +40,8 @@ export default class Analyzer {
             ordersEndTime: `${this.ordersEndTime.format('DD.MM.YYYY HH:mm:ss')}`,
             staticDataATMCount: this.staticData.length,
             staticDataAllATMCount: this.staticDataAll.length,
-            atmCoverage: this.atmCoverage
+            atmCoverage: this.atmCoverage,
+            missingATMs: this.missingATMs
         }
     }
     loadOrdersData(filepath, win) {
@@ -179,6 +181,7 @@ export default class Analyzer {
     }
 
     findATMCoverage() {
+        this.missingATMs = '';
         this.atmCoverage = 'Недостатньо даних';
         if (!this.closedOrdersCount || !this.staticDataAll.length || !this.arrUniqueATM.length) {
             return;
@@ -186,10 +189,15 @@ export default class Analyzer {
         let found = 0;
         let notFoundInStatic = []
         this.arrUniqueATM.forEach((el) => {
-            if (this.staticDataAll.some(e => e['серійний номер'] == el['SN банкомата'])) {
+            if (this.staticDataAll.some(e => e['ID'] == el['Id банкомата'])) {
                 found++;
             } else {
                 notFoundInStatic.push(el);
+            }
+        })
+        this.closedOrders.forEach( (order) => {
+            if(this.notFoundInStatic){
+                
             }
         })
 
@@ -198,6 +206,12 @@ export default class Analyzer {
         console.log('Not found IDs:');
         notFoundInStatic.forEach((el) => {
             console.log(el['Id банкомата']);
+            this.missingATMs += `${el['Id банкомата']}, `;
         })
+        if(!notFoundInStatic.length){
+            this.missingATMs = 'Статичні дані присутні для всіх АТМ';
+        }else{
+            this.missingATMs = this.missingATMs.slice(0, -2);
+        }
     }
 }
