@@ -25,7 +25,7 @@ export default class Analyzer {
         this.atmCoverage = 'Недостатньо даних';
         this.missingATMs = '';
         this.freeDates = [],
-        this.workingSaturdays = [];
+            this.workingSaturdays = [];
     }
     getStateForHome() {
         return {
@@ -146,9 +146,9 @@ export default class Analyzer {
         this.allOrdersCount = this.allOrdersData.length;
         this.closedOrders = [];
         this.allOrdersData.forEach((order) => {
-            if (order['Стан заявки'] == "Заявка закрита"){
-               this.closedOrders.push(order);
-               console.log(`asc:${order['Час доступа']} pln:${order['Плановий час']} real:${order['Фактичний час']}`) 
+            if (order['Стан заявки'] == "Заявка закрита") {
+                this.closedOrders.push(order);
+                //console.log(`asc:${order['Час доступа']} pln:${order['Плановий час']} real:${order['Фактичний час']}`) 
             }
         })
         this.closedOrdersCount = this.closedOrders.length;
@@ -232,14 +232,15 @@ export default class Analyzer {
 
         //fixing static data to each order
         this.closedOrders.forEach((order, index) => {
-            if(order['Id заявки'] != "2815"){return}
-            console.log(order['Id заявки'])
+            if (order['Id заявки'] != "2815") { return }
+
             order.staticData = this.staticDataAll.find(e => e['ID'] == order['Id банкомата']); //if not found returns undefined 
+
             if (!order.staticData || order.staticData['ID'] == "4158") return;
             let resDays = regExpDays.exec(order.staticData['особливості']);
             let resHoursFLM = regExpHours.exec(order.staticData['flm']);
             let resHoursSLM = regExpHours.exec(order.staticData['slm']);
-            
+
             order.workingDaysFLM = parseInt(resDays[1]);
             order.workingDaysSLM = parseInt(resDays[2]);
             order.hoursFLM = parseInt(resHoursFLM[1]);
@@ -248,7 +249,7 @@ export default class Analyzer {
             order.timeAccess = moment(order['Час доступа'], timeFormat);
             order.timePlanned = moment(order['Плановий час'], timeFormat);
             order.timeReal = moment(order['Фактичний час'], timeFormat);
-
+            console.log(`order: ${order['Id заявки']} atm: ${order.staticData['ID']} flm:${order.workingDaysFLM} slm:${order.workingDaysSLM}`)
             order.timeToComplete = this.countTimeToComplete(order);
             console.log(`complete: ${order.timeToComplete.hours()}:${order.timeToComplete.minutes()}\n`);
         });
@@ -260,40 +261,47 @@ export default class Analyzer {
 
         while (order.cursor.isBefore(order.timeReal)) {
             if (this.isWorkTime(order)) {
-                timePassed.add(1, 'm');
+                timePassed.add(5, 'm');
             }
-            order.cursor.add(moment.duration(1, 'm'))
+            order.cursor.add(moment.duration(5, 'm'))
         }
         return timePassed;
     }
 
     isWorkTime(order) {
         //check if it is free day from selected days in calendar
-    
+
         let isFreeday = this.freeDates.some((day) => {
             return (order.cursor.date() == day.date() && order.cursor.month() == day.month())
         });
         let isWorkingSaturday = this.workingSaturdays.some((day) => {
             return (order.cursor.date() == day.date() && order.cursor.month() == day.month())
         });
-        
-        if (isFreeday && !isWorkingSaturday)
+
+        if (isFreeday)
             return false;
-        
+
         //check if it is service weekday for ATM from order
+        let weekday = order.cursor.weekday();
+        if(weekday == 0) weekday = 7;
         if (order['Тип'] == 'flm') {
-            if (order.cursor.weekday() > order.workingDaysFLM && !isWorkingSaturday)
+
+            if (weekday > order.workingDaysFLM) {
+                console.log(`flm weekday ${weekday} > ${order.workingDaysFLM}`)
                 return false
+            }
         } else {
-            if (order.cursor.weekday() > order.workingDaysSLM && !isWorkingSaturday)
+            if (weekday > order.workingDaysSLM) {
+                console.log(`slm weekday ${weekday} > ${order.workingDaysFLM}`)
                 return false
+            }
         }
-    
+
         //check if it is in time limit between 9:00 and 18:00
         if (parseInt(order.cursor.hour()) < 9 || parseInt(order.cursor.hour()) > 17) {
             return false
         }
-    
+
         //otherwise it's working time
         console.log(order.cursor.format('DD.MM HH:mm'))
         return true

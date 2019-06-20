@@ -122,6 +122,7 @@
                     :columns="1"
                     :min-date="this.minDate"
                     :max-date="this.maxDate"
+                    :disabled-dates="{ weekdays: [ 1, 7] }"
                     mode="multiple"
                     :value="null"
                     is-inline
