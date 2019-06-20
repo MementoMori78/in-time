@@ -9,6 +9,8 @@ import {
 import Analyzer from './Analyzer'
 import { ECONNRESET } from 'constants';
 import moment from 'moment';
+import xl from 'xlsx'
+import path from 'path'
 
 const isDevelopment = process.env.NODE_ENV !== 'production'
 
@@ -22,6 +24,7 @@ protocol.registerSchemesAsPrivileged([{ scheme: 'app', secure: true }])
 function createWindow() {
   // Create the browser window.
   win = new BrowserWindow({
+    icon: path.join(__static, 'icon.png'),
     width: 850, height: 1050, webPreferences: {
       nodeIntegration: true
     }
@@ -112,7 +115,8 @@ ipcMain.on('home:mounted', (event, data) => {
 ipcMain.on('orders:upload', (event, data) => {
   let options = {
     filters: [{
-      name: 'Файл з даними заявок Printec, згенерований Управлінням',
+      title: 'Завантаження файлу із даними заявок Printec',
+      name: 'Файл з даними заявок Printec, згенерований Управлінням у кодуванні UTF-8',
       extensions: ['csv']
     }]
   };
@@ -124,7 +128,8 @@ ipcMain.on('orders:upload', (event, data) => {
 ipcMain.on('data:upload', (event, data) => {
   let options = {
     filters: [{
-      name: 'Файл зі статичними даними, згенерований Управлінням',
+      title: 'Завантаження файлу зі статичними даними',
+      name: 'Файл зі статичними даними, згенерований Управлінням у кодуванні UTF-8',
       extensions: ['csv']
     }]
 };
@@ -148,7 +153,7 @@ ipcMain.on('stats:get', (event, data) => {
   });
   data.workingSaturdays.forEach(date => {
     let newDate = moment(date).add(3, 'h');
-    freeDates.push(newDate)
+    workingSaturdays.push(newDate)
   });
   freeDates.forEach((el) => {
     console.log(el.format('DD.MM.YYYY'))
@@ -158,5 +163,20 @@ ipcMain.on('stats:get', (event, data) => {
   })
 
   an.createReport(freeDates, workingSaturdays);
+  var wb = xl.utils.book_new();
+  let ws = xl.utils.json_to_sheet(an.arrForXLS);
+  xl.utils.book_append_sheet(wb, ws, "Лист 1");
+  let options = {
+    title: 'Збереження файлу статистики виконнання заявок',
+    defaultPath: 'C:\\',
+    buttonLabel: 'Зберегти файл статистики',
+    filters: [{
+      name: 'Файл таблиці',
+      extensions: ['xlsx']
+    }]
+  };
+  let filepath = dialog.showSaveDialog(options)
+  if(!filepath) return;
+  xl.writeFile(wb, filepath);
 })
 

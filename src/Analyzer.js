@@ -133,7 +133,7 @@ export default class Analyzer {
                 }
             })
             .on('end', (rows) => {
-                console.log(`static parsed, all:${this.staticDataAll.length}, ncr:${this.staticData.length}`);
+                //console.log(`static parsed, all:${this.staticDataAll.length}, ncr:${this.staticData.length}`);
                 //checking if orders file has been parsed
                 this.findATMCoverage();
                 win.send('data:upload', this.getStateForHome());
@@ -154,7 +154,7 @@ export default class Analyzer {
         this.closedOrdersCount = this.closedOrders.length;
         this.findUnique();
         this.findStartEndTime();
-        console.log(`analyzed orders, overall: ${this.allOrdersCount} closed: ${this.closedOrdersCount}`)
+        //console.log(`analyzed orders, overall: ${this.allOrdersCount} closed: ${this.closedOrdersCount}`)
     }
 
     findUnique() {
@@ -203,16 +203,15 @@ export default class Analyzer {
         this.closedOrders.forEach((order) => {
             order.staticData = this.staticDataAll.find((row) => { return row['ID'] == order['Id банкомата'] });
             if (!order.staticData) {
-                console.log(`not found atmid:${order['Id банкомата']} orderid:${order['Id заявки']}`)
+                //console.log(`not found atmid:${order['Id банкомата']} orderid:${order['Id заявки']}`)
             }
             //console.log(order.staticData);
         })
 
         this.atmCoverage = `${found}/${this.uniqueATMFromOrders}`;
-        console.log(this.atmCoverage);
-        console.log('Not found IDs:');
+        //console.log(this.atmCoverage);
+
         notFoundInStatic.forEach((el) => {
-            console.log(el['Id банкомата']);
             this.missingATMs += `${el['Id банкомата']}, `;
         })
         if (!notFoundInStatic.length) {
@@ -225,18 +224,19 @@ export default class Analyzer {
     createReport(freeDates, workingSaturdays) {
         this.freeDates = freeDates;
         this.workingSaturdays = workingSaturdays;
+        console.log(workingSaturdays.length);
         let regExpDays = /FLM-(\d);SLM-(\d)/;
         let regExpHours = /\w+ (\d+)/;
         let timeFormat = 'DD.MM.YYYY HH:mm:ss';
+        let timeFormatDisplay = 'DD.MM.YYYY HH:mm';
         let dateFormat = 'DD.MM HH:mm';
-
+        this.arrForXLS = [];
         //fixing static data to each order
-        this.closedOrders.forEach((order, index) => {
-            if (order['Id заявки'] != "2815") { return }
+        this.closedOrders.forEach((order) => {
 
             order.staticData = this.staticDataAll.find(e => e['ID'] == order['Id банкомата']); //if not found returns undefined 
+            if (!order.staticData || order.staticData['ID'] == "4158") return;  //4158 - test ATM
 
-            if (!order.staticData || order.staticData['ID'] == "4158") return;
             let resDays = regExpDays.exec(order.staticData['особливості']);
             let resHoursFLM = regExpHours.exec(order.staticData['flm']);
             let resHoursSLM = regExpHours.exec(order.staticData['slm']);
@@ -249,9 +249,50 @@ export default class Analyzer {
             order.timeAccess = moment(order['Час доступа'], timeFormat);
             order.timePlanned = moment(order['Плановий час'], timeFormat);
             order.timeReal = moment(order['Фактичний час'], timeFormat);
-            console.log(`order: ${order['Id заявки']} atm: ${order.staticData['ID']} flm:${order.workingDaysFLM} slm:${order.workingDaysSLM}`)
             order.timeToComplete = this.countTimeToComplete(order);
-            console.log(`complete: ${order.timeToComplete.hours()}:${order.timeToComplete.minutes()}\n`);
+            let hoursStr = `${String((order.timeToComplete.days() * 24) + order.timeToComplete.hours()).padStart(2, '0')}:${String(order.timeToComplete.minutes()).padStart(2, 0)}`;
+            //console.log(`order: ${order['Id заявки']} atm: ${order.staticData['ID']} type: ${order['Тип'].substring(0, 3)} | flm: ${order.workingDaysFLM} slm: ${order.workingDaysSLM} | acs: ${order.timeAccess.format(timeFormatDisplay)} | fact: ${order.timeReal.format(timeFormatDisplay)} | complete: ${hoursStr}`);
+            this.arrForXLS.push( {
+                'Id заявки': order['Id заявки'],	
+                'Id банкомата': order.staticData['ID'],	
+                'SN банкомата': order.staticData['серійний номер'],
+                'Тип': order['Тип'],
+                'Локалізація': order['Локалізація'],
+                'Опис заявки': order['Опис заявки'],	
+                'Звіт': order['Звіт'],
+                'Стан заявки': order['Стан заявки'],
+                'Час створення': order['Час створення'],
+                'Час доступа': order['Час доступа'],
+                //'Різниця між часом створення та часом доступу (робочих годин)': ,	
+                'Плановий час': order['Плановий час'],	
+                //'Різниця між плановим часом та часом доступу (робочих годин) Фактично встановлення строків FLM\\SLM': ,	
+                //'Коректність встановлення дедлайнів		Різниця між фактичним часом та плановим (робочих годин)': ,	
+                'Фактичний час': order['Фактичний час'],
+                'Різниця між фактичним часом та часом доступу (робочих годин)': hoursStr,	
+                //'Порівняння різниці фактичного часу та часу доступу з FLM\\SLM': ,	
+                'FLM': order.hoursFLM,	
+                'SLM': order.hoursSLM
+            })
+            /* 
+                'Id заявки': ,	
+                'Id банкомата': ,	
+                'SN банкомата': ,
+                'Тип': ,
+                'Локалізація': ,
+                'Опис заявки': ,	
+                'Звіт': ,
+                'Стан заявки': ,
+                'Час створення': ,
+                'Час доступа': ,
+                'Різниця між часом створення та часом доступу (робочих годин)': ,	
+                'Плановий час': ,	
+                'Різниця між плановим часом та часом доступу (робочих годин) Фактично встановлення строків FLM\SLM': ,	
+                'Коректність встановлення дедлайнів	Фактичний час	Різниця між фактичним часом та плановим (робочих годин)': ,	
+                'Різниця між фактичним часом та часом доступу (робочих годин)': ,	
+                'Порівняння різниці фактичного часу та часу доступу з FLM\SLM': ,	
+                'FLM': ,	
+                'SLM': 
+            */
         });
     }
 
@@ -261,49 +302,50 @@ export default class Analyzer {
 
         while (order.cursor.isBefore(order.timeReal)) {
             if (this.isWorkTime(order)) {
-                timePassed.add(5, 'm');
+                timePassed.add(1, 'm');
             }
-            order.cursor.add(moment.duration(5, 'm'))
+            order.cursor.add(moment.duration(1, 'm'))
         }
         return timePassed;
     }
 
     isWorkTime(order) {
-        //check if it is free day from selected days in calendar
-
-        let isFreeday = this.freeDates.some((day) => {
-            return (order.cursor.date() == day.date() && order.cursor.month() == day.month())
-        });
-        let isWorkingSaturday = this.workingSaturdays.some((day) => {
-            return (order.cursor.date() == day.date() && order.cursor.month() == day.month())
-        });
-
-        if (isFreeday)
-            return false;
-
-        //check if it is service weekday for ATM from order
-        let weekday = order.cursor.weekday();
-        if(weekday == 0) weekday = 7;
-        if (order['Тип'] == 'flm') {
-
-            if (weekday > order.workingDaysFLM) {
-                console.log(`flm weekday ${weekday} > ${order.workingDaysFLM}`)
-                return false
-            }
-        } else {
-            if (weekday > order.workingDaysSLM) {
-                console.log(`slm weekday ${weekday} > ${order.workingDaysFLM}`)
-                return false
-            }
-        }
-
         //check if it is in time limit between 9:00 and 18:00
         if (parseInt(order.cursor.hour()) < 9 || parseInt(order.cursor.hour()) > 17) {
             return false
         }
+        //check if it is free day from selected days in calendar
+        let isFreeday = this.freeDates.some((day) => {
+            return (order.cursor.date() == day.date() && order.cursor.month() == day.month())
+        });
+        //check if it is working saturday
+        let isWorkingSaturday = this.workingSaturdays.some((day) => {
+            return (order.cursor.date() == day.date() && order.cursor.month() == day.month())
+        });
+
+        //If it is free day and flm service time is less than 6 
+        if (isFreeday && order['Тип'] == 'flm' && order.workingDaysFLM <= 5) {
+            return false;
+        }
+        if (isFreeday && order['Тип'] == 'atm repair') {
+            return false;
+        }
+        //check if it is service weekday for ATM from order
+        let weekday = order.cursor.weekday();
+        if (weekday == 0) weekday = 7;
+
+        if (order['Тип'] == 'flm') {
+            if (weekday > order.workingDaysFLM && !isWorkingSaturday) {
+                return false
+            }
+        } else {
+            if (weekday > order.workingDaysSLM) {
+                return false
+            }
+        }
 
         //otherwise it's working time
-        console.log(order.cursor.format('DD.MM HH:mm'))
+        //console.log(order.cursor.format('DD.MM HH:mm'))
         return true
     }
 }
