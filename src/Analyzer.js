@@ -122,6 +122,7 @@ export default class Analyzer {
             .on('error', error => {
                 console.error(rowsCount, error);
                 this.dataFilepath = 'Помилка при зчитуванні ' + this.dataFilepath;
+                win.send('data:upload', this.getStateForHome());
             })
             .on('data', (dataObj) => {
                 this.staticDataAll.push(dataObj);
@@ -143,8 +144,10 @@ export default class Analyzer {
         this.allOrdersCount = this.allOrdersData.length;
         this.closedOrders = [];
         this.allOrdersData.forEach((order) => {
-            if (order['Стан заявки'] == "Заявка закрита")
-                this.closedOrders.push(order);
+            if (order['Стан заявки'] == "Заявка закрита"){
+               this.closedOrders.push(order);
+               console.log(`asc:${order['Час доступа']} pln:${order['Плановий час']} real:${order['Фактичний час']}`) 
+            }
         })
         this.closedOrdersCount = this.closedOrders.length;
         this.findUnique();
