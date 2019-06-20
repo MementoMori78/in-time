@@ -113,40 +113,66 @@
       <div class="col s12">
         <div class="card white">
           <div class="card-content">
-            
-            <span class="card-title">Виберіть вихідні дні</span>
             <div class="row">
-            <vc-date-picker
-              :locale="{ id: 'uk'}"
-              :columns="parseInt(2)"
-              :min-date="this.minDate"
-              :max-date="this.maxDate"
-              mode="multiple"
-              :value="null"
-              is-double-paned
-              is-inline
-              is-expanded
-              @input="showDates"
-            ></vc-date-picker>
+              <div class="col s6">
+                <span class="card-title">Оберіть вихідні дні</span>
+                <div class="row">
+                  <vc-date-picker
+                    :locale="{ id: 'uk'}"
+                    :columns="1"
+                    :min-date="this.minDate"
+                    :max-date="this.maxDate"
+                    mode="multiple"
+                    :value="null"
+                    is-inline
+                    is-expanded
+                    @input="updateFreeDates"
+                  ></vc-date-picker>
+                </div>
+              </div>
+
+              <div class="col s6">
+                <span class="card-title">Оберіть робочі суботи</span>
+                <div class="row">
+                  <vc-date-picker
+                    :locale="{ id: 'uk'}"
+                    :columns="1"
+                    :disabled-dates="{ weekdays: [1, 2, 3, 4, 5, 6 ] }"
+                    :min-date="this.minDate"
+                    :max-date="this.maxDate"
+                    mode="multiple"
+                    :value="null"
+                    is-inline
+                    is-expanded
+                    @input="updateWorkingSaturdays"
+                  ></vc-date-picker>
+                </div>
+              </div>
             </div>
             <div class="row">
-            <div class="col s12">
-              <p class="center-align">
-                <a class=" waves-effect waves-light blue btn" v-on:click="getStats">Отримати файл статистики</a>
-              </p>
+              <div class="col s12">
+                <p class="center-align">
+                  <a
+                    class="waves-effect waves-light blue btn"
+                    v-on:click="getStats"
+                  >Отримати файл статистики</a>
+                </p>
               </div>
             </div>
           </div>
         </div>
       </div>
     </div>
-    
   </div>
 </template>
  
 <style>
 .vc-rounded-lg {
   border-radius: 0;
+}
+
+.card-content {
+  padding-top: 10px;
 }
 </style>
 
@@ -180,7 +206,8 @@ export default {
       missingATMs: "",
       minDate: moment().toDate(),
       maxDate: moment().toDate(),
-      selectedDates: []
+      selectedDates: [],
+      workingSaturdays: []
     };
   },
   methods: {
@@ -191,7 +218,7 @@ export default {
       ipcRenderer.send("data:upload");
     },
     getStats() {
-      ipcRenderer.send("stats:get", { dates: this.selectedDates });
+      ipcRenderer.send("stats:get", { dates: this.selectedDates , workingSaturdays: this.workingSaturdays});
     },
     updateState(state) {
       this.showDataCard = state.showDataCard;
@@ -216,9 +243,11 @@ export default {
       this.maxDate = moment(this.ordersEndTime, "DD.MM.YYYY HH:mm:ss").toDate();
       //this.calendarAttributes[0].dates.end = moment(this.ordersEndTime, 'DD.MM.YYYY HH:mm:ss').toDate();
     },
-    showDates(obj) {
+    updateFreeDates(obj) {
       this.selectedDates = obj;
-      console.log(this.selectedDates.length);
+    },
+    updateWorkingSaturdays(obj) {
+      this.workingSaturdays = obj;
     }
   },
   beforeCreate() {

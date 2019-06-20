@@ -24,6 +24,8 @@ export default class Analyzer {
         this.ordersEndTime = moment('1995-12-25');
         this.atmCoverage = 'Недостатньо даних';
         this.missingATMs = '';
+        this.freeDates = [],
+        this.workingSaturdays = [];
     }
     getStateForHome() {
         return {
@@ -158,7 +160,7 @@ export default class Analyzer {
     findUnique() {
         this.arrUniqueATM = [];
         for (let i = 0; i < this.closedOrders.length; i++) {
-            if (!this.arrUniqueATM.some( e => e['Id банкомата'] == this.closedOrders[i]['Id банкомата']))
+            if (!this.arrUniqueATM.some(e => e['Id банкомата'] == this.closedOrders[i]['Id банкомата']))
                 this.arrUniqueATM.push(this.closedOrders[i]);
         }
         this.uniqueATMFromOrders = this.arrUniqueATM.length;
@@ -198,10 +200,12 @@ export default class Analyzer {
                 notFoundInStatic.push(el);
             }
         })
-        this.closedOrders.forEach( (order) => {
-            if(this.notFoundInStatic){
-                
+        this.closedOrders.forEach((order) => {
+            order.staticData = this.staticDataAll.find((row) => { return row['ID'] == order['Id банкомата'] });
+            if (!order.staticData) {
+                console.log(`not found atmid:${order['Id банкомата']} orderid:${order['Id заявки']}`)
             }
+            //console.log(order.staticData);
         })
 
         this.atmCoverage = `${found}/${this.uniqueATMFromOrders}`;
@@ -211,10 +215,87 @@ export default class Analyzer {
             console.log(el['Id банкомата']);
             this.missingATMs += `${el['Id банкомата']}, `;
         })
-        if(!notFoundInStatic.length){
+        if (!notFoundInStatic.length) {
             this.missingATMs = 'Статичні дані присутні для всіх АТМ';
-        }else{
+        } else {
             this.missingATMs = this.missingATMs.slice(0, -2);
         }
+    }
+
+    createReport(freeDates, workingSaturdays) {
+        this.freeDates = freeDates;
+        this.workingSaturdays = workingSaturdays;
+        let regExpDays = /FLM-(\d);SLM-(\d)/;
+        let regExpHours = /\w+ (\d+)/;
+        let timeFormat = 'DD.MM.YYYY HH:mm:ss';
+        let dateFormat = 'DD.MM HH:mm';
+
+        //fixing static data to each order
+        this.closedOrders.forEach((order, index) => {
+            if(order['Id заявки'] != "2815"){return}
+            console.log(order['Id заявки'])
+            order.staticData = this.staticDataAll.find(e => e['ID'] == order['Id банкомата']); //if not found returns undefined 
+            if (!order.staticData || order.staticData['ID'] == "4158") return;
+            let resDays = regExpDays.exec(order.staticData['особливості']);
+            let resHoursFLM = regExpHours.exec(order.staticData['flm']);
+            let resHoursSLM = regExpHours.exec(order.staticData['slm']);
+            
+            order.workingDaysFLM = parseInt(resDays[1]);
+            order.workingDaysSLM = parseInt(resDays[2]);
+            order.hoursFLM = parseInt(resHoursFLM[1]);
+            order.hoursSLM = parseInt(resHoursSLM[1]);
+            order.timeCreated = moment(order['Час створення'], timeFormat);
+            order.timeAccess = moment(order['Час доступа'], timeFormat);
+            order.timePlanned = moment(order['Плановий час'], timeFormat);
+            order.timeReal = moment(order['Фактичний час'], timeFormat);
+
+            order.timeToComplete = this.countTimeToComplete(order);
+            console.log(`complete: ${order.timeToComplete.hours()}:${order.timeToComplete.minutes()}\n`);
+        });
+    }
+
+    countTimeToComplete(order) {
+        let timePassed = moment.duration(0, 's')
+        order.cursor = moment(order.timeAccess);
+
+        while (order.cursor.isBefore(order.timeReal)) {
+            if (this.isWorkTime(order)) {
+                timePassed.add(1, 'm');
+            }
+            order.cursor.add(moment.duration(1, 'm'))
+        }
+        return timePassed;
+    }
+
+    isWorkTime(order) {
+        //check if it is free day from selected days in calendar
+    
+        let isFreeday = this.freeDates.some((day) => {
+            return (order.cursor.date() == day.date() && order.cursor.month() == day.month())
+        });
+        let isWorkingSaturday = this.workingSaturdays.some((day) => {
+            return (order.cursor.date() == day.date() && order.cursor.month() == day.month())
+        });
+        
+        if (isFreeday && !isWorkingSaturday)
+            return false;
+        
+        //check if it is service weekday for ATM from order
+        if (order['Тип'] == 'flm') {
+            if (order.cursor.weekday() > order.workingDaysFLM && !isWorkingSaturday)
+                return false
+        } else {
+            if (order.cursor.weekday() > order.workingDaysSLM && !isWorkingSaturday)
+                return false
+        }
+    
+        //check if it is in time limit between 9:00 and 18:00
+        if (parseInt(order.cursor.hour()) < 9 || parseInt(order.cursor.hour()) > 17) {
+            return false
+        }
+    
+        //otherwise it's working time
+        console.log(order.cursor.format('DD.MM HH:mm'))
+        return true
     }
 }

@@ -8,6 +8,7 @@ import {
 
 import Analyzer from './Analyzer'
 import { ECONNRESET } from 'constants';
+import moment from 'moment';
 
 const isDevelopment = process.env.NODE_ENV !== 'production'
 
@@ -16,19 +17,21 @@ const isDevelopment = process.env.NODE_ENV !== 'production'
 let win
 
 // Scheme must be registered before the app is ready
-protocol.registerSchemesAsPrivileged([{scheme: 'app', secure: true }])
+protocol.registerSchemesAsPrivileged([{ scheme: 'app', secure: true }])
 
-function createWindow () {
+function createWindow() {
   // Create the browser window.
-  win = new BrowserWindow({ width: 850, height: 1050, webPreferences: {
-    nodeIntegration: true
-  } })
+  win = new BrowserWindow({
+    width: 850, height: 1050, webPreferences: {
+      nodeIntegration: true
+    }
+  })
 
   if (process.env.WEBPACK_DEV_SERVER_URL) {
     // Load the url of the dev server if in development mode
     win.loadURL(process.env.WEBPACK_DEV_SERVER_URL)
-    if (!process.env.IS_TEST){}
-       win.webContents.openDevTools()
+    if (!process.env.IS_TEST) { }
+    win.webContents.openDevTools()
   } else {
     createProtocol('app')
     // Load the index.html when not in development
@@ -47,7 +50,7 @@ app.on('window-all-closed', () => {
   // to stay active until the user quits explicitly with Cmd + Q
   if (process.platform !== 'darwin') {
     app.quit()
-  } 
+  }
 })
 
 app.on('activate', () => {
@@ -103,30 +106,30 @@ let menuTemplate = [
 
 
 ipcMain.on('home:mounted', (event, data) => {
-    event.sender.send( 'home:mounted', an.getStateForHome())
+  event.sender.send('home:mounted', an.getStateForHome())
 })
 
 ipcMain.on('orders:upload', (event, data) => {
   let options = {
-      filters: [{ 
-        name: 'Файл з даними заявок Printec, згенерований Управлінням', 
-        extensions: ['csv']
-      }] 
-    };
-    let filepath = dialog.showOpenDialog(options);
-    an.loadOrdersData(filepath, win);
-    //event.sender.send('orders:upload', an.getStateForHome());
+    filters: [{
+      name: 'Файл з даними заявок Printec, згенерований Управлінням',
+      extensions: ['csv']
+    }]
+  };
+  let filepath = dialog.showOpenDialog(options);
+  an.loadOrdersData(filepath, win);
+  //event.sender.send('orders:upload', an.getStateForHome());
 })
 
 ipcMain.on('data:upload', (event, data) => {
   let options = {
-      filters: [{ 
-        name: 'Файл зі статичними даними, згенерований Управлінням', 
-        extensions: ['csv']
-      }] 
-    };
-    let filepath = dialog.showOpenDialog(options);
-    an.loadStaticData(filepath, win);
+    filters: [{
+      name: 'Файл зі статичними даними, згенерований Управлінням',
+      extensions: ['csv']
+    }]
+};
+  let filepath = dialog.showOpenDialog(options);
+  an.loadStaticData(filepath, win);
 })
 
 ipcMain.on('state:reload', (event, data) => {
@@ -137,6 +140,23 @@ ipcMain.on('state:reload', (event, data) => {
 
 ipcMain.on('stats:get', (event, data) => {
   console.log("stats:get");
-  console.log(data.dates);
+  let freeDates = [];
+  let workingSaturdays = []
+  data.dates.forEach(date => {
+    let newDate = moment(date).add(3, 'h');
+    freeDates.push(newDate)
+  });
+  data.workingSaturdays.forEach(date => {
+    let newDate = moment(date).add(3, 'h');
+    freeDates.push(newDate)
+  });
+  freeDates.forEach((el) => {
+    console.log(el.format('DD.MM.YYYY'))
+  })
+  workingSaturdays.forEach( (el) => {
+    console.log(el.format('DD.MM.YYYY'))
+  })
+
+  an.createReport(freeDates, workingSaturdays);
 })
 
