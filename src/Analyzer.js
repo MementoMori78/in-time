@@ -4,7 +4,7 @@ import fs from 'fs'
 import { delimiter } from 'path';
 import ipcMain from 'electron';
 import moment from 'moment';
-
+import iconv from 'iconv-lite'
 export default class Analyzer {
     constructor() {
         this.orderWS;
@@ -72,30 +72,32 @@ export default class Analyzer {
             'realTime' //'Фактичний час',
         ]
         */
-        const fileStream = fs.createReadStream(filepath, {
-            encoding: 'utf-8',
-        });
+        let str = iconv.decode(fs.readFileSync(filepath), 'win1251');
+        String.prototype.splice = function(idx, rem, str) {
+            return this.slice(0, idx) + str + this.slice(idx + Math.abs(rem));
+        };
+        str = str.splice(str.indexOf('\n') - 1, 0, "Плановий час МЦ|");
+        console.log();
         const parseOptions = {
             delimiter: "|",
             headers: true,
-            objectMode: true
+            objectMode: true,
+            quote:'\\'
         }
-        const parser = csv.parse(parseOptions);
         this.allOrdersData = [];
         this.closedOrdersCount = 0;
         this.allOrdersCount = 0;
-        let rowsCount = 0;
-        fileStream
-            .pipe(parser)
+        csv
+            .fromString(str, parseOptions)
             .on('error', error => {
-                this.ordersFilepath = 'Помилка при зчитуванні ' + this.ordersFilepath;
-                console.error(rowsCount, error);
+                this.ordersFilepath = 'Помилка при зчитуванні ' + filepath;
+                win.send('data:upload', this.getStateForHome());
             })
             .on('data', (orderObj) => {
                 this.allOrdersData.push(orderObj);
             })
             .on('end', (rows) => {
-                console.log(`parsed ${rows} rows`);
+                //console.log(`parsed ${rows} rows`);
                 this.analyzeAllOrders();
                 this.findATMCoverage();
                 win.send('orders:upload', this.getStateForHome());
@@ -107,20 +109,20 @@ export default class Analyzer {
         filepath = filepath[0];
         this.dataFilepath = filepath;
         this.showDataCard = true;
-        const fileStream = fs.createReadStream(filepath, {
-            encoding: 'utf-8',
-        });
+        
         const parseOptions = {
             delimiter: "|",
             headers: true,
             objectMode: true
         }
-        const parser = csv.parse(parseOptions);
+
+        const str = iconv.decode(fs.readFileSync(filepath), 'win1251');
+        
         this.staticDataAll = [];
         this.staticData = [];
         let rowsCount = 0;
-        fileStream
-            .pipe(parser)
+        csv
+            .fromString(str, parseOptions)
             .on('error', error => {
                 console.error(rowsCount, error);
                 this.dataFilepath = 'Помилка при зчитуванні ' + this.dataFilepath;
@@ -224,7 +226,6 @@ export default class Analyzer {
     createReport(freeDates, workingSaturdays) {
         this.freeDates = freeDates;
         this.workingSaturdays = workingSaturdays;
-        console.log(workingSaturdays.length);
         let regExpDays = /FLM-(\d);SLM-(\d)/;
         let regExpHours = /\w+ (\d+)/;
         let timeFormat = 'DD.MM.YYYY HH:mm:ss';
@@ -245,54 +246,75 @@ export default class Analyzer {
             order.workingDaysSLM = parseInt(resDays[2]);
             order.hoursFLM = parseInt(resHoursFLM[1]);
             order.hoursSLM = parseInt(resHoursSLM[1]);
+
             order.timeCreated = moment(order['Час створення'], timeFormat);
             order.timeAccess = moment(order['Час доступа'], timeFormat);
             order.timePlanned = moment(order['Плановий час'], timeFormat);
             order.timeReal = moment(order['Фактичний час'], timeFormat);
+
             order.timeToComplete = this.countTimeToComplete(order);
-            let hoursStr = `${String((order.timeToComplete.days() * 24) + order.timeToComplete.hours()).padStart(2, '0')}:${String(order.timeToComplete.minutes()).padStart(2, 0)}`;
+            order.diffCreateAccess = this.countDiffCreateAccess(order);
+            order.diffAccessPlanned = this.countDiffAccessPlanned(order);
+            order.diffPlannedReal = this.countDiffPlannedReal(order);
+            let symbolToAddBefore = this.timelineDirection ? '+' : '-';
+
+            let timeToCompleteStr = this.formStr(order.timeToComplete);
+            let diffCreateAccessStr = this.formStr(order.diffCreateAccess);
+            let diffAccessPlannedStr = this.formStr(order.diffAccessPlanned);
+            let diffPlannedRealStr = `${symbolToAddBefore}${this.formStr(order.diffPlannedReal)}`;
             //console.log(`order: ${order['Id заявки']} atm: ${order.staticData['ID']} type: ${order['Тип'].substring(0, 3)} | flm: ${order.workingDaysFLM} slm: ${order.workingDaysSLM} | acs: ${order.timeAccess.format(timeFormatDisplay)} | fact: ${order.timeReal.format(timeFormatDisplay)} | complete: ${hoursStr}`);
-            this.arrForXLS.push( {
-                'Id заявки': order['Id заявки'],	
-                'Id банкомата': order.staticData['ID'],	
+
+            let deadlineCorrect;
+            let isInTime;
+            
+            if (order['Тип'] == 'flm') {
+                if (order.diffAccessPlanned.hours() < order.hoursFLM || (order.diffAccessPlanned.hours() == order.hoursFLM && order.diffAccessPlanned.minutes() <= 5)) {
+                    deadlineCorrect = 'Коректно';
+                } else {
+                    deadlineCorrect = 'Некоректно';
+                }
+                if (((order.timeToComplete.days() * 24) + order.timeToComplete.hours()) < order.hoursFLM || (order.timeToComplete.hours() == order.hoursFLM && order.timeToComplete.minutes() <= 5)) {
+                    
+                    isInTime = 'Вчасно';
+                } else {
+                    isInTime = 'Прострочено';
+                }
+            } else {
+                if (order.diffAccessPlanned.hours() < order.hoursSLM || (order.diffAccessPlanned.minutes() <= 5 && order.diffAccessPlanned.hours() == order.hoursSLM)) {
+                    deadlineCorrect = 'Коректно';
+                } else {
+                    deadlineCorrect = 'Некоректно';
+                }
+
+                if (((order.timeToComplete.days() * 24) + order.timeToComplete.hours()) < order.hoursSLM || (order.timeToComplete.hours() == order.hoursSLM && order.timeToComplete.minutes() <= 5)) {
+                    isInTime = 'Вчасно';
+                } else {
+                    isInTime = 'Прострочено';
+                }
+            }
+            
+            this.arrForXLS.push({
+                'Id заявки': order['Id заявки'],
+                'Id банкомата': order.staticData['ID'],
                 'SN банкомата': order.staticData['серійний номер'],
                 'Тип': order['Тип'],
                 'Локалізація': order['Локалізація'],
-                'Опис заявки': order['Опис заявки'],	
+                'Опис заявки': order['Опис заявки'],
                 'Звіт': order['Звіт'],
-                'Стан заявки': order['Стан заявки'],
                 'Час створення': order['Час створення'],
                 'Час доступа': order['Час доступа'],
-                //'Різниця між часом створення та часом доступу (робочих годин)': ,	
-                'Плановий час': order['Плановий час'],	
-                //'Різниця між плановим часом та часом доступу (робочих годин) Фактично встановлення строків FLM\\SLM': ,	
-                //'Коректність встановлення дедлайнів		Різниця між фактичним часом та плановим (робочих годин)': ,	
+                'Різниця між часом створення та часом доступу (робочих годин)': diffCreateAccessStr,
+                'Плановий час': order['Плановий час'],
+                'Різниця між плановим часом та часом доступу (робочих годин) Фактично встановлення строків FLM\\SLM': diffAccessPlannedStr,
+                'Коректність встановлення дедлайнів': deadlineCorrect,
+                'Різниця між фактичним часом та плановим (робочих годин)': diffPlannedRealStr,
                 'Фактичний час': order['Фактичний час'],
-                'Різниця між фактичним часом та часом доступу (робочих годин)': hoursStr,	
-                //'Порівняння різниці фактичного часу та часу доступу з FLM\\SLM': ,	
-                'FLM': order.hoursFLM,	
-                'SLM': order.hoursSLM
-            })
-            /* 
-                'Id заявки': ,	
-                'Id банкомата': ,	
-                'SN банкомата': ,
-                'Тип': ,
-                'Локалізація': ,
-                'Опис заявки': ,	
-                'Звіт': ,
-                'Стан заявки': ,
-                'Час створення': ,
-                'Час доступа': ,
-                'Різниця між часом створення та часом доступу (робочих годин)': ,	
-                'Плановий час': ,	
-                'Різниця між плановим часом та часом доступу (робочих годин) Фактично встановлення строків FLM\SLM': ,	
-                'Коректність встановлення дедлайнів	Фактичний час	Різниця між фактичним часом та плановим (робочих годин)': ,	
-                'Різниця між фактичним часом та часом доступу (робочих годин)': ,	
-                'Порівняння різниці фактичного часу та часу доступу з FLM\SLM': ,	
-                'FLM': ,	
-                'SLM': 
-            */
+                'Різниця між фактичним часом та часом доступу (робочих годин)': timeToCompleteStr,
+                'Порівняння різниці фактичного часу та часу доступу з FLM\\SLM': isInTime,	
+                'FLM, годин на виконання': order.hoursFLM,
+                'SLM, годин на виконання': order.hoursSLM,
+                'Режим обслуговування': order.staticData['особливості']
+            });
         });
     }
 
@@ -305,6 +327,54 @@ export default class Analyzer {
                 timePassed.add(1, 'm');
             }
             order.cursor.add(moment.duration(1, 'm'))
+        }
+        return timePassed;
+    }
+
+    countDiffCreateAccess(order) {
+        let timePassed = moment.duration(0, 's')
+        order.cursor = moment(order.timeCreated);
+        while (order.cursor.isBefore(order.timeAccess)) {
+            if (this.isWorkTime(order)) {
+                timePassed.add(1, 'm');
+            }
+            order.cursor.add(moment.duration(1, 'm'))
+        }
+        return timePassed;
+    }
+
+    countDiffAccessPlanned(order) {
+        let timePassed = moment.duration(0, 's')
+        order.cursor = moment(order.timeAccess);
+        while (order.cursor.isBefore(order.timePlanned)) {
+            if (this.isWorkTime(order)) {
+                timePassed.add(1, 'm');
+            }
+            order.cursor.add(moment.duration(1, 'm'))
+        }
+        return timePassed;
+    }
+
+    countDiffPlannedReal(order) {
+        let timelineDirection = order.timePlanned.isBefore(order.timeReal);
+        this.timelineDirection = timelineDirection;
+        let timePassed = moment.duration(0, 's')
+        if (timelineDirection) {
+            order.cursor = moment(order.timePlanned);
+            while (order.cursor.isBefore(order.timeReal)) {
+                if (this.isWorkTime(order)) {
+                    timePassed.add(1, 'm');
+                }
+                order.cursor.add(moment.duration(1, 'm'))
+            }
+        } else {
+            order.cursor = moment(order.timeReal);
+            while (order.cursor.isBefore(order.timePlanned)) {
+                if (this.isWorkTime(order)) {
+                    timePassed.add(1, 'm');
+                }
+                order.cursor.add(moment.duration(1, 'm'))
+            }
         }
         return timePassed;
     }
@@ -348,4 +418,9 @@ export default class Analyzer {
         //console.log(order.cursor.format('DD.MM HH:mm'))
         return true
     }
+
+    formStr(moment) {
+        return `${String((moment.days() * 24) + moment.hours()).padStart(2, '0')}:${String(moment.minutes()).padStart(2, 0)}`;
+    }
+
 }

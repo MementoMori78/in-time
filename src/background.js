@@ -5,13 +5,13 @@ import {
   createProtocol,
   installVueDevtools
 } from 'vue-cli-plugin-electron-builder/lib'
-
+import fs from 'fs'
 import Analyzer from './Analyzer'
 import { ECONNRESET } from 'constants';
 import moment from 'moment';
 import xl from 'xlsx'
 import path from 'path'
-
+import iconv from 'iconv-lite'
 const isDevelopment = process.env.NODE_ENV !== 'production'
 
 // Keep a global reference of the window object, if you don't, the window will
@@ -25,7 +25,7 @@ function createWindow() {
   // Create the browser window.
   win = new BrowserWindow({
     icon: path.join(__static, 'icon.png'),
-    width: 850, height: 1050, webPreferences: {
+    width: 910, height: 1050, webPreferences: {
       nodeIntegration: true
     }
   })
@@ -34,7 +34,7 @@ function createWindow() {
     // Load the url of the dev server if in development mode
     win.loadURL(process.env.WEBPACK_DEV_SERVER_URL)
     if (!process.env.IS_TEST) { }
-    win.webContents.openDevTools()
+    //win.webContents.openDevTools()
   } else {
     createProtocol('app')
     // Load the index.html when not in development
@@ -121,6 +121,7 @@ ipcMain.on('orders:upload', (event, data) => {
     }]
   };
   let filepath = dialog.showOpenDialog(options);
+  
   an.loadOrdersData(filepath, win);
   //event.sender.send('orders:upload', an.getStateForHome());
 })
@@ -134,17 +135,18 @@ ipcMain.on('data:upload', (event, data) => {
     }]
 };
   let filepath = dialog.showOpenDialog(options);
+  
   an.loadStaticData(filepath, win);
 })
 
 ipcMain.on('state:reload', (event, data) => {
-  console.log('reload state')
+  //console.log('reload state')
   event.sender.send('state:reload', an.getStateForHome())
 })
 
 
 ipcMain.on('stats:get', (event, data) => {
-  console.log("stats:get");
+  //console.log("stats:get");
   let freeDates = [];
   let workingSaturdays = []
   data.dates.forEach(date => {
@@ -156,10 +158,10 @@ ipcMain.on('stats:get', (event, data) => {
     workingSaturdays.push(newDate)
   });
   freeDates.forEach((el) => {
-    console.log(el.format('DD.MM.YYYY'))
+    //console.log(el.format('DD.MM.YYYY'))
   })
   workingSaturdays.forEach( (el) => {
-    console.log(el.format('DD.MM.YYYY'))
+    //console.log(el.format('DD.MM.YYYY'))
   })
 
   an.createReport(freeDates, workingSaturdays);
@@ -180,3 +182,10 @@ ipcMain.on('stats:get', (event, data) => {
   xl.writeFile(wb, filepath);
 })
 
+function createWin1251(filepath){
+  let str = fs.readFileSync(filepath, 'UTF-8');
+  let buf = iconv.encode(str, "cp1251");
+  let stream = fs.createWriteStream(`${filepath}.win1251`);
+  stream.write(buf);
+  stream.end();
+}

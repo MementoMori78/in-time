@@ -9,19 +9,21 @@
     "electron:serve": "vue-cli-service electron:serve",
     "postinstall": "electron-builder install-app-deps",
     "postuninstall": "electron-builder install-app-deps",
-    "test:unit": "vue-cli-service test:unit", 
+    "test:unit": "vue-cli-service test:unit",
     "electron:generate-icons": "electron-icon-builder --input=./public/icon.png --output=build --flatten"
   },
   "main": "background.js",
   "dependencies": {
     "electron": "^5.0.4",
     "fast-csv": "^2.5.0",
+    "iconv-lite": "^0.4.24",
     "moment": "^2.24.0",
     "node-xlsx": "^0.14.1",
     "v-calendar": "^1.0.0-beta.14",
     "vue": "^2.6.10",
     "vue-router": "^3.0.3",
-    "vuex": "^3.0.1"
+    "vuex": "^3.0.1",
+    "windows-1251": "^1.0.0"
   },
   "devDependencies": {
     "@vue/cli-plugin-unit-mocha": "^3.7.0",
