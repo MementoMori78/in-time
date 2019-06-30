@@ -25,7 +25,8 @@ export default class Analyzer {
         this.atmCoverage = 'Недостатньо даних';
         this.missingATMs = '';
         this.freeDates = [],
-            this.workingSaturdays = [];
+        this.workingSaturdays = [],
+        this.fiveFLMswitch = false;
     }
     getStateForHome() {
         return {
@@ -223,7 +224,8 @@ export default class Analyzer {
         }
     }
 
-    createReport(freeDates, workingSaturdays) {
+    createReport(freeDates, workingSaturdays, fiveFLMswitch) {
+        this.fiveFLMswitch = fiveFLMswitch;
         this.freeDates = freeDates;
         this.workingSaturdays = workingSaturdays;
         let regExpDays = /FLM-(\d);SLM-(\d)/;
@@ -268,7 +270,7 @@ export default class Analyzer {
             let isInTime;
             
             if (order['Тип'] == 'flm') {
-                if (order.diffAccessPlanned.hours() < order.hoursFLM || (order.diffAccessPlanned.hours() == order.hoursFLM && order.diffAccessPlanned.minutes() <= 5)) {
+                if ((order.diffAccessPlanned.days() * 24) + order.diffAccessPlanned.hours() < order.hoursFLM || (order.diffAccessPlanned.hours() == order.hoursFLM && order.diffAccessPlanned.minutes() <= 5)) {
                     deadlineCorrect = 'Коректно';
                 } else {
                     deadlineCorrect = 'Некоректно';
@@ -280,7 +282,7 @@ export default class Analyzer {
                     isInTime = 'Прострочено';
                 }
             } else {
-                if (order.diffAccessPlanned.hours() < order.hoursSLM || (order.diffAccessPlanned.minutes() <= 5 && order.diffAccessPlanned.hours() == order.hoursSLM)) {
+                if ((order.diffAccessPlanned.days() * 24) + order.diffAccessPlanned.hours() < order.hoursSLM || (order.diffAccessPlanned.minutes() <= 5 && order.diffAccessPlanned.hours() == order.hoursSLM)) {
                     deadlineCorrect = 'Коректно';
                 } else {
                     deadlineCorrect = 'Некоректно';
@@ -403,7 +405,7 @@ export default class Analyzer {
         //check if it is service weekday for ATM from order
         let weekday = order.cursor.weekday();
         if (weekday == 0) weekday = 7;
-
+        
         if (order['Тип'] == 'flm') {
             if (weekday > order.workingDaysFLM && !isWorkingSaturday) {
                 return false
@@ -413,7 +415,9 @@ export default class Analyzer {
                 return false
             }
         }
-
+        if( order['Тип'] == 'flm' && this.fiveFLMswitch && (weekday == 6 || weekday == 7) && !isWorkingSaturday){
+            return false
+        }
         //otherwise it's working time
         //console.log(order.cursor.format('DD.MM HH:mm'))
         return true

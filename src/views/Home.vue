@@ -152,12 +152,19 @@
             </div>
             <div class="row">
               <div class="col s12">
+              <p>
+                <label>
+                  
+                  <input type="checkbox" v-model="fiveFLMswitch"/>
+                  <span>Звести заявки до типу FLM 5</span>
+                </label>
+              </p>
                 <p class="center-align">
                   <a
                     class="waves-effect waves-light blue btn"
                     v-on:click="getStats"
                   >Отримати файл статистики</a>
-                </p>
+                </p>  
               </div>
             </div>
           </div>
@@ -208,7 +215,8 @@ export default {
       minDate: moment().toDate(),
       maxDate: moment().toDate(),
       selectedDates: [],
-      workingSaturdays: []
+      workingSaturdays: [],
+      fiveFLMswitch: false
     };
   },
   methods: {
@@ -219,7 +227,7 @@ export default {
       ipcRenderer.send("data:upload");
     },
     getStats() {
-      ipcRenderer.send("stats:get", { dates: this.selectedDates , workingSaturdays: this.workingSaturdays});
+      ipcRenderer.send("stats:get", { dates: this.selectedDates , workingSaturdays: this.workingSaturdays, fiveFLMswitch: this.fiveFLMswitch});
     },
     updateState(state) {
       this.showDataCard = state.showDataCard;

@@ -146,28 +146,24 @@ ipcMain.on('state:reload', (event, data) => {
 
 
 ipcMain.on('stats:get', (event, data) => {
-  //console.log("stats:get");
   let freeDates = [];
-  let workingSaturdays = []
+  let workingSaturdays = [];
+  //creating moment object for each selected date in free dates datepicker
   data.dates.forEach(date => {
     let newDate = moment(date).add(3, 'h');
     freeDates.push(newDate)
   });
+  //creating moment object for each selected date in working saturdays datepicker
   data.workingSaturdays.forEach(date => {
     let newDate = moment(date).add(3, 'h');
     workingSaturdays.push(newDate)
   });
-  freeDates.forEach((el) => {
-    //console.log(el.format('DD.MM.YYYY'))
-  })
-  workingSaturdays.forEach( (el) => {
-    //console.log(el.format('DD.MM.YYYY'))
-  })
 
-  an.createReport(freeDates, workingSaturdays);
+  an.createReport(freeDates, workingSaturdays, data.fiveFLMswitch);
+
   var wb = xl.utils.book_new();
   let ws = xl.utils.json_to_sheet(an.arrForXLS);
-  xl.utils.book_append_sheet(wb, ws, "Лист 1");
+  xl.utils.book_append_sheet(wb, ws, "Статистика заявок");
   let options = {
     title: 'Збереження файлу статистики виконнання заявок',
     defaultPath: 'C:\\',

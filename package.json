@@ -21,6 +21,7 @@
     "node-xlsx": "^0.14.1",
     "v-calendar": "^1.0.0-beta.14",
     "vue": "^2.6.10",
+    "vue-rocker-switch": "^1.2.4",
     "vue-router": "^3.0.3",
     "vuex": "^3.0.1",
     "windows-1251": "^1.0.0"
